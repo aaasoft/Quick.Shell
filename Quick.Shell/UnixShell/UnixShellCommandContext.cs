@@ -1,9 +1,12 @@
 ﻿using Quick.Shell.Utils;
+using System;
 using System.Diagnostics;
+using System.Runtime.Versioning;
 
-namespace Quick.Shell.PowerShell
+namespace Quick.Shell.UnixShell
 {
-    public class PowerShellCommandContext : ICommandContext
+    [UnsupportedOSPlatform("windows")]
+    public class UnixShellCommandContext : ICommandContext
     {
         private string boundary;
         private object closeLockObj = new object();
@@ -16,7 +19,7 @@ namespace Quick.Shell.PowerShell
         public event EventHandler<int>? ProcessExited;
         private bool shouldRaiseProcessExitedEvent = false;
         public bool Disposed { get; private set; } = false;
-        public PowerShellCommandContext()
+        public UnixShellCommandContext()
         {
             boundary = $"--{Guid.NewGuid()}--";
         }
@@ -27,7 +30,7 @@ namespace Quick.Shell.PowerShell
                 throw new InvalidOperationException("Object is disposed.");
             Close();
             shouldRaiseProcessExitedEvent = true;
-            var psi = ProcessUtils.CreateProcessStartInfo(PowerShellProcessContext.GetExecuteFileName(), "-NoLogo", "-NonInteractive", "-ExecutionPolicy", "Unrestricted");
+            var psi = ProcessUtils.CreateProcessStartInfo(UnixShellProcessContext.GetExecuteFileName());
             process = Process.Start(psi);
             if (process == null)
                 throw new IOException("After process start,process is null");
@@ -44,6 +47,7 @@ namespace Quick.Shell.PowerShell
         private Queue<string> errorQueue = new Queue<string>();
         private string[] GetErrorLines()
         {
+            Thread.Sleep(100);
             lock (errorQueue)
             {
                 var ret = errorQueue.ToArray();
@@ -99,6 +103,7 @@ namespace Quick.Shell.PowerShell
                     process.Refresh();
                     if (!process.HasExited)
                         process.Kill();
+                    process.WaitForExit();
                     var processExitCode = process.ExitCode;
                     process = null;
                     if (shouldRaiseProcessExitedEvent)
@@ -122,7 +127,7 @@ namespace Quick.Shell.PowerShell
                     if (input == null)
                         throw new IOException("input is null.");
                     input.WriteLine(command);
-                    input.WriteLine("$?");
+                    input.WriteLine("echo $?");
                     input.WriteLine($"echo {boundary}");
                 }
                 catch
@@ -130,8 +135,6 @@ namespace Quick.Shell.PowerShell
                     OnClose();
                     throw;
                 }
-                var skipLines = 1;
-                var continueAfterSkip = true;
                 List<string> lines = new List<string>();
                 string line;
                 while (true)
@@ -148,35 +151,21 @@ namespace Quick.Shell.PowerShell
                         OnClose();
                         throw;
                     }
-                    if (skipLines > 0)
-                    {
-                        skipLines--;
-                        if (!continueAfterSkip && skipLines == 0)
-                            break;
-                        continue;
-                    }
                     //如果读取到了Boundary，则读取结束
                     if (line.Contains(boundary))
-                    {
-                        skipLines = 1;
-                        continueAfterSkip = false;
-                        continue;
-                    }
-                    //如果要移除空行
-                    if (removeEmptyLine && string.IsNullOrEmpty(line))
-                        continue;
+                        break;
                     lines.Add(line);
                 }
-                var isSuccess = lines.Last() == "True";
+                var exitCode = int.Parse(lines.Last());
                 string[] retLines;
-                if (isSuccess)
+                if (exitCode == 0)
                     retLines = lines.Take(lines.Count - 2).ToArray();
                 else
                     retLines = GetErrorLines();
 
                 return new ShellCommandResult()
                 {
-                    ExitCode = isSuccess ? 0 : -1,
+                    ExitCode = exitCode,
                     Output = retLines
                 };
             }

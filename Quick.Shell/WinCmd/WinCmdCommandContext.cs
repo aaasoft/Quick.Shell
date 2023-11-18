@@ -1,9 +1,12 @@
 ﻿using Quick.Shell.Utils;
+using Quick.Shell.WinCmd;
 using System.Diagnostics;
+using System.Runtime.Versioning;
 
-namespace Quick.Shell.PowerShell
+namespace Quick.Shell.WinCmd
 {
-    public class PowerShellCommandContext : ICommandContext
+    [SupportedOSPlatform("windows")]
+    public class WinCmdCommandContext : ICommandContext
     {
         private string boundary;
         private object closeLockObj = new object();
@@ -16,7 +19,7 @@ namespace Quick.Shell.PowerShell
         public event EventHandler<int>? ProcessExited;
         private bool shouldRaiseProcessExitedEvent = false;
         public bool Disposed { get; private set; } = false;
-        public PowerShellCommandContext()
+        public WinCmdCommandContext()
         {
             boundary = $"--{Guid.NewGuid()}--";
         }
@@ -27,7 +30,7 @@ namespace Quick.Shell.PowerShell
                 throw new InvalidOperationException("Object is disposed.");
             Close();
             shouldRaiseProcessExitedEvent = true;
-            var psi = ProcessUtils.CreateProcessStartInfo(PowerShellProcessContext.GetExecuteFileName(), "-NoLogo", "-NonInteractive", "-ExecutionPolicy", "Unrestricted");
+            var psi = ProcessUtils.CreateProcessStartInfo(WinCmdProcessContext.GetExecuteFileName());
             process = Process.Start(psi);
             if (process == null)
                 throw new IOException("After process start,process is null");
@@ -122,7 +125,7 @@ namespace Quick.Shell.PowerShell
                     if (input == null)
                         throw new IOException("input is null.");
                     input.WriteLine(command);
-                    input.WriteLine("$?");
+                    input.WriteLine("echo %ERRORLEVEL%");
                     input.WriteLine($"echo {boundary}");
                 }
                 catch
@@ -130,6 +133,7 @@ namespace Quick.Shell.PowerShell
                     OnClose();
                     throw;
                 }
+                var shouldRecord = false;
                 var skipLines = 1;
                 var continueAfterSkip = true;
                 List<string> lines = new List<string>();
@@ -158,25 +162,31 @@ namespace Quick.Shell.PowerShell
                     //如果读取到了Boundary，则读取结束
                     if (line.Contains(boundary))
                     {
+                        if (!removeEmptyLine)
+                            lines.RemoveAt(lines.Count - 1);
                         skipLines = 1;
                         continueAfterSkip = false;
                         continue;
                     }
-                    //如果要移除空行
+                    if (!shouldRecord)
+                    {
+                        shouldRecord = line.Contains(command);
+                        continue;
+                    }
                     if (removeEmptyLine && string.IsNullOrEmpty(line))
                         continue;
                     lines.Add(line);
                 }
-                var isSuccess = lines.Last() == "True";
+                var exitCode = int.Parse(lines.Last());
                 string[] retLines;
-                if (isSuccess)
+                if (exitCode == 0)
                     retLines = lines.Take(lines.Count - 2).ToArray();
                 else
                     retLines = GetErrorLines();
 
                 return new ShellCommandResult()
                 {
-                    ExitCode = isSuccess ? 0 : -1,
+                    ExitCode = exitCode,
                     Output = retLines
                 };
             }

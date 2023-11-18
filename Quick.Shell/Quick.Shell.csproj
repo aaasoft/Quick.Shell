@@ -8,6 +8,8 @@
 		<Version>1.0.0</Version>
 		<Description>Utils for execute shell.</Description>
 		<PackageProjectUrl>https://github.com/aaasoft/Quick.Shell</PackageProjectUrl>
+		<IsAotCompatible>true</IsAotCompatible>
+		<IsTrimmable>true</IsTrimmable>
 	</PropertyGroup>
 
 </Project>

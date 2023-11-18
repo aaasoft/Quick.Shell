@@ -18,9 +18,16 @@ public class ProcessUtils
             //小于Win10系统，进程输出编码为本地编码
             if (!OperatingSystem.IsWindowsVersionAtLeast(10))
             {
-                var encoding = Encoding.GetEncoding(Thread.CurrentThread.CurrentCulture.TextInfo.ANSICodePage);
-                psi.StandardOutputEncoding = encoding;
-                psi.StandardErrorEncoding = encoding;
+                try
+                {
+                    var encoding = Encoding.GetEncoding(Thread.CurrentThread.CurrentCulture.TextInfo.ANSICodePage);
+                    psi.StandardOutputEncoding = encoding;
+                    psi.StandardErrorEncoding = encoding;
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine("[Quick.Shell][EncodingWarning]" + ex.Message);
+                }
             }
         }
         return psi;
