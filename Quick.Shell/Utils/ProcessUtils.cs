@@ -1,5 +1,4 @@
 ﻿using System.Diagnostics;
-using System.Text;
 
 namespace Quick.Shell.Utils;
 
@@ -13,23 +12,6 @@ public class ProcessUtils
         psi.RedirectStandardOutput = true;
         psi.RedirectStandardError = true;
         psi.UseShellExecute = false;
-        if (OperatingSystem.IsWindows())
-        {
-            //小于Win10系统，进程输出编码为本地编码
-            if (!OperatingSystem.IsWindowsVersionAtLeast(10))
-            {
-                try
-                {
-                    var encoding = Encoding.GetEncoding(Thread.CurrentThread.CurrentCulture.TextInfo.ANSICodePage);
-                    psi.StandardOutputEncoding = encoding;
-                    psi.StandardErrorEncoding = encoding;
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine("[Quick.Shell][EncodingWarning]" + ex.Message);
-                }
-            }
-        }
         return psi;
     }
 
