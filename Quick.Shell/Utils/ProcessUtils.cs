@@ -1,9 +1,10 @@
 ﻿using System.Diagnostics;
+using System.Text;
 
 namespace Quick.Shell.Utils;
 
 public class ProcessUtils
-{   
+{
     public static ProcessStartInfo ProcessProcessStartInfo(ProcessStartInfo psi)
     {
         psi.CreateNoWindow = true;
@@ -12,6 +13,13 @@ public class ProcessUtils
         psi.RedirectStandardOutput = true;
         psi.RedirectStandardError = true;
         psi.UseShellExecute = false;
+        if (OperatingSystem.IsWindows())
+        {
+            var encoding = Encoding.GetEncoding(Thread.CurrentThread.CurrentCulture.TextInfo.ANSICodePage);
+            psi.StandardOutputEncoding = encoding;
+            psi.StandardErrorEncoding = encoding;
+            psi.StandardInputEncoding = encoding;
+        }
         return psi;
     }
 
@@ -27,8 +35,8 @@ public class ProcessUtils
     public static ShellProcessResult WaitProcessExit(Process process)
     {
         process.WaitForExit();
-        string? outputStr=null;
-        string? errorStr=null;
+        string? outputStr = null;
+        string? errorStr = null;
 
         var psi = process.StartInfo;
         if (psi != null)

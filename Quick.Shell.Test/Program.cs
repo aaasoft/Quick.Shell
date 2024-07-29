@@ -1,6 +1,8 @@
 ﻿using Quick.Shell;
 using System.Diagnostics;
+using System.Text;
 
+Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
 Action<ICommandContext> handler = commandContext =>
 {
     commandContext.Open();
@@ -68,4 +70,5 @@ else
     Console.WriteLine("Used Milliseconds: " + stopwatch.ElapsedMilliseconds);
 }
 Console.WriteLine("-----Done-----");
-Console.ReadLine();
+if (!Console.IsInputRedirected)
+    Console.ReadLine();
