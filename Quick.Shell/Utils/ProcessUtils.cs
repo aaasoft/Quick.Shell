@@ -48,6 +48,7 @@ public class ProcessUtils
         }
         return new ShellProcessResult()
         {
+            ProcessId = process.Id,
             ExitCode = process.ExitCode,
             Output = outputStr,
             Error = errorStr
